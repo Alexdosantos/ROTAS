@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#1a1a2e">
+<title>Organizador de Rotas</title>
+<link rel="manifest" href="data:application/json,%7B%22name%22%3A%22Organizador%20de%20Rotas%22%2C%22short_name%22%3A%22Rotas%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%231a1a2e%22%2C%22theme_color%22%3A%22%231a1a2e%22%7D">
+<link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" href="css/rotas.css">
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+</head>
+<body>
+
+<div class="user-bar" id="userBar" style="display:none;">
+  <span id="userEmailDisplay"></span>
+  <button onclick="logout()" class="logout-btn">Sair</button>
+</div>
+
+<div class="container">
+  <header>
+    <div class="logo">📦</div>
+    <h1>Organizador de <span>Rotas</span></h1>
+    <p class="subtitle">Ordene entregas por bairro, CEP ou endereço</p>
+  </header>
+
+  <!-- Upload Area -->
+  <div class="upload-zone" id="dropzone">
+    <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" />
+    <div class="upload-icon">📊</div>
+    <div class="upload-title">Importar planilha de rotas</div>
+    <div class="upload-hint">Arraste ou toque para selecionar · XLSX, XLS ou CSV</div>
+  </div>
+
+  <div class="file-selected" id="fileInfo">
+    <span>✅</span>
+    <span class="name" id="fileName">—</span>
+    <span class="rows" id="rowCount">0 entregas</span>
+  </div>
+
+  <!-- Stats Grid -->
+  <div class="stats-row" id="statsRow" style="display:none;">
+    <div class="stat-card">
+      <div class="stat-value" id="statTotal">0</div>
+      <div class="stat-label">Entregas</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value" id="statBairros">0</div>
+      <div class="stat-label">Bairros</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value" id="statPendentes">0</div>
+      <div class="stat-label">Pendentes</div>
+    </div>
+  </div>
+
+  <!-- Configuration & Sort -->
+  <div id="sortSection" style="display:none;">
+    <div class="section-title">Ordenar por</div>
+    <div class="sort-options">
+      <button class="sort-btn active" data-sort="bairro" onclick="setSort(this)">
+        <span class="ico">🏘️</span>
+        <span class="label">Bairro</span>
+        <span class="desc">Agrupa por bairro</span>
+      </button>
+      <button class="sort-btn" data-sort="cep" onclick="setSort(this)">
+        <span class="ico">📮</span>
+        <span class="label">CEP</span>
+        <span class="desc">Ordena pelo CEP</span>
+      </button>
+      <button class="sort-btn" data-sort="endereco" onclick="setSort(this)">
+        <span class="ico">🔤</span>
+        <span class="label">Endereço A-Z</span>
+        <span class="desc">Ordem alfabética</span>
+      </button>
+      <button class="sort-btn" data-sort="seq" onclick="setSort(this)">
+        <span class="ico">🔢</span>
+        <span class="label">Sequência</span>
+        <span class="desc">Ordem original</span>
+      </button>
+    </div>
+
+    <!-- Filters -->
+    <div class="filter-row">
+      <select class="filter-select" id="filterBairro" onchange="renderPreview()">
+        <option value="">Todos os bairros</option>
+      </select>
+      <select class="filter-select" id="filterStatus" onchange="renderPreview()">
+        <option value="">Todos os status</option>
+        <option value="seq">Com sequência</option>
+        <option value="pending">Pendentes (-)</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- Preview Section -->
+  <div class="preview-section" id="previewSection" style="display:none;">
+    <div class="preview-header">
+      <div class="section-title" style="margin:0;">Prévia das entregas</div>
+      <div class="count-badge" id="previewCount">0</div>
+    </div>
+    <div class="table-wrap" id="tableWrap">
+      <div class="empty">
+        <div class="empty-icon">📭</div>
+        <div>Nenhuma entrega encontrada</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Bottom Action Bar -->
+<div class="actions">
+  <button class="btn btn-secondary" onclick="resetApp()" id="btnReset" style="display:none;">↩ Novo</button>
+  <button class="btn btn-primary" id="btnDownload" onclick="downloadOrganized()" disabled>
+    ⬇ Baixar Planilha Organizada
+  </button>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- Custom Logic -->
+<script src="js/rotas.js"></script>
+
+</body>
+</html>

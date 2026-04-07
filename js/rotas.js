@@ -1,6 +1,6 @@
 // Login Guard
 if (localStorage.getItem('isLoggedIn') !== 'true') {
-  window.location.href = 'login.html';
+  window.location.href = 'index.html';
 } else {
   document.addEventListener('DOMContentLoaded', () => {
     const userBar = document.getElementById('userBar');
@@ -16,7 +16,7 @@ if (localStorage.getItem('isLoggedIn') !== 'true') {
 function logout() {
   localStorage.removeItem('isLoggedIn');
   localStorage.removeItem('userEmail');
-  window.location.href = 'login.html';
+  window.location.href = 'index.html';
 }
 
 let rawData = [];

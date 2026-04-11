@@ -28,6 +28,64 @@ const COLS = {
   address: 4, bairro: 5, city: 6, cep: 7, lat: 8, lng: 9
 };
 
+function normalizeText(value) {
+  return String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function getAddressKey(row) {
+  return normalizeText(row[COLS.address]) || '__sem_endereco__';
+}
+
+function getDisplayAddress(row) {
+  return String(row[COLS.address] || '').trim() || 'Sem endereço informado';
+}
+
+function compareSequence(a, b) {
+  const sa = a[COLS.seq];
+  const sb = b[COLS.seq];
+  const na = sa === '-' || sa === '' ? Infinity : Number(sa);
+  const nb = sb === '-' || sb === '' ? Infinity : Number(sb);
+  if (na !== nb) return na - nb;
+  return String(a[COLS.spx] || '').localeCompare(String(b[COLS.spx] || ''), 'pt');
+}
+
+function compareAddress(a, b) {
+  const aa = getAddressKey(a);
+  const ab = getAddressKey(b);
+  if (aa !== ab) return aa.localeCompare(ab, 'pt');
+  return String(a[COLS.spx] || '').localeCompare(String(b[COLS.spx] || ''), 'pt');
+}
+
+function buildAddressGroups(rows) {
+  const groups = [];
+  const groupMap = new Map();
+
+  rows.forEach(row => {
+    const key = getAddressKey(row);
+    if (!groupMap.has(key)) {
+      const group = {
+        key,
+        address: getDisplayAddress(row),
+        bairro: row[COLS.bairro] || '',
+        cep: row[COLS.cep] || '',
+        rows: []
+      };
+      groupMap.set(key, group);
+      groups.push(group);
+    }
+
+    groupMap.get(key).rows.push(row);
+  });
+
+  return groups;
+}
+
 // Drag & drop
 document.addEventListener('DOMContentLoaded', () => {
   const dropzone = document.getElementById('dropzone');
@@ -116,37 +174,43 @@ function getSorted() {
   if (statusFilter === 'seq') data = data.filter(r => r[COLS.seq] !== '-' && r[COLS.seq] !== '');
   if (statusFilter === 'pending') data = data.filter(r => r[COLS.seq] === '-' || r[COLS.seq] === '');
 
-  if (sortMode === 'bairro') {
-    data.sort((a, b) => {
+  const groups = buildAddressGroups(data);
+
+  groups.forEach(group => {
+    group.rows.sort(compareSequence);
+  });
+
+  groups.sort((groupA, groupB) => {
+    const a = groupA.rows[0];
+    const b = groupB.rows[0];
+
+    if (sortMode === 'bairro') {
       const ba = String(a[COLS.bairro] || '').toLowerCase();
       const bb = String(b[COLS.bairro] || '').toLowerCase();
       if (ba !== bb) return ba.localeCompare(bb, 'pt');
-      return String(a[COLS.address] || '').localeCompare(String(b[COLS.address] || ''), 'pt');
-    });
-  } else if (sortMode === 'cep') {
-    data.sort((a, b) => {
+      return compareAddress(a, b);
+    }
+
+    if (sortMode === 'cep') {
       const ca = String(a[COLS.cep] || '').replace(/\D/g, '');
       const cb = String(b[COLS.cep] || '').replace(/\D/g, '');
-      return ca.localeCompare(cb);
-    });
-  } else if (sortMode === 'endereco') {
-    data.sort((a, b) =>
-      String(a[COLS.address] || '').localeCompare(String(b[COLS.address] || ''), 'pt')
-    );
-  } else if (sortMode === 'seq') {
-    data.sort((a, b) => {
-      const sa = a[COLS.seq]; const sb = b[COLS.seq];
-      const na = sa === '-' || sa === '' ? Infinity : Number(sa);
-      const nb = sb === '-' || sb === '' ? Infinity : Number(sb);
-      return na - nb;
-    });
-  }
+      if (ca !== cb) return ca.localeCompare(cb);
+      return compareAddress(a, b);
+    }
 
-  return data;
+    if (sortMode === 'seq') {
+      return compareSequence(a, b);
+    }
+
+    return compareAddress(a, b);
+  });
+
+  return groups.flatMap(group => group.rows);
 }
 
 function renderPreview() {
   const sorted = getSorted();
+  const groups = buildAddressGroups(sorted);
   const previewCount = document.getElementById('previewCount');
   if (previewCount) previewCount.textContent = sorted.length;
   
@@ -161,13 +225,9 @@ function renderPreview() {
   let html = '';
   let lastBairro = null;
 
-  sorted.forEach((row, i) => {
-    const seq = row[COLS.seq];
-    const address = row[COLS.address] || '—';
-    const bairro = row[COLS.bairro] || '';
-    const cep = row[COLS.cep] || '';
-    const spx = row[COLS.spx] || '';
-    const isPending = seq === '-' || seq === '';
+  groups.forEach(group => {
+    const firstRow = group.rows[0];
+    const bairro = firstRow[COLS.bairro] || '';
 
     if (sortMode === 'bairro' && bairro !== lastBairro) {
       html += `<div class="sep-header">📍 ${bairro || 'Sem bairro'}</div>`;
@@ -175,17 +235,32 @@ function renderPreview() {
     }
 
     html += `
-      <div class="delivery-card">
-        <div class="seq-badge ${isPending ? 'pending' : ''}">${isPending ? '?' : seq}</div>
-        <div class="delivery-info">
-          <div class="delivery-address">${address}</div>
-          <div class="delivery-meta">
-            ${bairro ? `<span class="tag tag-bairro">${bairro}</span>` : ''}
-            ${cep ? `<span class="tag tag-cep">${cep}</span>` : ''}
-            ${spx ? `<span class="tag tag-id">${spx.substring(0,16)}</span>` : ''}
+      <div class="address-group">
+        <div class="address-group-header">
+          <div class="address-group-title">${group.address}</div>
+          <div class="address-group-count">${group.rows.length} ${group.rows.length === 1 ? 'pacote' : 'pacotes'}</div>
+        </div>`;
+
+    group.rows.forEach(row => {
+      const seq = row[COLS.seq];
+      const cep = row[COLS.cep] || '';
+      const spx = row[COLS.spx] || '';
+      const isPending = seq === '-' || seq === '';
+
+      html += `
+        <div class="delivery-card grouped">
+          <div class="seq-badge ${isPending ? 'pending' : ''}">${isPending ? '?' : seq}</div>
+          <div class="delivery-info">
+            <div class="delivery-meta">
+              ${bairro ? `<span class="tag tag-bairro">${bairro}</span>` : ''}
+              ${cep ? `<span class="tag tag-cep">${cep}</span>` : ''}
+              ${spx ? `<span class="tag tag-id">${spx.substring(0,16)}</span>` : ''}
+            </div>
           </div>
-        </div>
-      </div>`;
+        </div>`;
+    });
+
+    html += `</div>`;
   });
 
   wrap.innerHTML = html;
@@ -195,22 +270,25 @@ function downloadOrganized() {
   if (!rawData.length) return;
 
   const sorted = getSorted();
+  const groups = buildAddressGroups(sorted);
   const wb = XLSX.utils.book_new();
 
-  // Build output data
-  const outputData = [headers, ...sorted];
-
-  // Add "Ordem" column header and values
-  const withOrder = outputData.map((row, i) => {
-    if (i === 0) return ['Ordem', ...row];
-    return [i, ...row];
+  const groupedRows = [];
+  groups.forEach((group, index) => {
+    group.rows.forEach(row => {
+      groupedRows.push([index + 1, group.rows.length, ...row]);
+    });
   });
 
-  const ws = XLSX.utils.aoa_to_sheet(withOrder);
+  // Build output data
+  const outputData = [['Ordem', 'Qtd no Endereço', ...headers], ...groupedRows];
+
+  const ws = XLSX.utils.aoa_to_sheet(outputData);
 
   // Column widths
   ws['!cols'] = [
     { wch: 6 },   // Ordem
+    { wch: 16 },  // Qtd no Endereço
     { wch: 18 },  // AT ID
     { wch: 10 },  // Sequence
     { wch: 8 },   // Stop

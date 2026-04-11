@@ -205,6 +205,40 @@ h1 span { color: var(--accent); }
   overflow: hidden;
 }
 
+.address-group {
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+
+.address-group:last-child {
+  border-bottom: none;
+}
+
+.address-group-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px 10px;
+  background: rgba(255,255,255,0.03);
+}
+
+.address-group-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1.4;
+}
+
+.address-group-count {
+  flex-shrink: 0;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: rgba(0,212,170,0.12);
+  color: #00d4aa;
+  font-size: 11px;
+  font-weight: 700;
+}
+
 .delivery-card {
   padding: 14px 16px;
   border-bottom: 1px solid rgba(255,255,255,0.08);
@@ -216,6 +250,12 @@ h1 span { color: var(--accent); }
 
 .delivery-card:last-child { border-bottom: none; }
 .delivery-card:hover { background: rgba(255,255,255,0.02); }
+
+.delivery-card.grouped {
+  padding-top: 10px;
+  padding-bottom: 10px;
+  padding-left: 20px;
+}
 
 .seq-badge {
   min-width: 30px;

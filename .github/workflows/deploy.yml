@@ -1,69 +1,30 @@
-name: Deploy
+name: CI
 
 on:
   push:
     branches:
       - homologacao
       - master
-  workflow_dispatch:
-    inputs:
-      environment:
-        description: Ambiente para deploy
-        required: true
-        type: choice
-        options:
-          - homologacao
-          - producao
+  pull_request:
 
 permissions:
   contents: read
 
 concurrency:
-  group: deploy-${{ github.ref }}
+  group: ci-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  prepare:
-    name: Definir ambiente
+  validate:
+    name: Validar estrutura para Vercel
     runs-on: ubuntu-latest
-    outputs:
-      environment: ${{ steps.vars.outputs.environment }}
-    steps:
-      - name: Resolver ambiente
-        id: vars
-        run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "environment=${{ inputs.environment }}" >> "$GITHUB_OUTPUT"
-          elif [ "${{ github.ref_name }}" = "homologacao" ]; then
-            echo "environment=homologacao" >> "$GITHUB_OUTPUT"
-          else
-            echo "environment=producao" >> "$GITHUB_OUTPUT"
-          fi
-
-  deploy:
-    name: Deploy ${{ needs.prepare.outputs.environment }}
-    needs: prepare
-    runs-on: ubuntu-latest
-    environment: ${{ needs.prepare.outputs.environment }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Validar estrutura do projeto
+      - name: Validar arquivos estaticos
         run: |
           test -f index.html
           test -f organizador-rotas.html
           test -d css
           test -d js
-
-      - name: Publicar arquivos
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.DEPLOY_HOST }}
-          username: ${{ secrets.DEPLOY_USER }}
-          key: ${{ secrets.DEPLOY_KEY }}
-          port: ${{ secrets.DEPLOY_PORT || '22' }}
-          source: "index.html,organizador-rotas.html,css/,js/"
-          target: ${{ secrets.DEPLOY_PATH }}
-          strip_components: 0
-

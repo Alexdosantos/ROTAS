@@ -17,7 +17,7 @@
   to { transform: translate(50px, 50px) scale(1.2); }
 }
 
-/* Background Grid Effect on Body */
+/* Background Grid Effect on Bodyxx */
 body::before {
   content: '';
   position: absolute;
